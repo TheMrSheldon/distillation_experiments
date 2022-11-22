@@ -1,0 +1,11 @@
+defaults:
+  - _self_
+  - model: null
+  - datamodule: h5
+
+
+seed: 12345
+used_gpus: null
+batch_size: 10
+out_path: ???
+data_path: ???

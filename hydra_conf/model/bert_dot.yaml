@@ -1,0 +1,17 @@
+bert_model: bert-base-uncased
+
+checkpoint: null
+
+model:
+  _target_: models.bertdot.BERTDotRanker
+  lr: 0.00003
+  warmup_steps: 1000
+  hparams:
+    bert_model: ${...bert_model}
+    dropout: 0.1
+    freeze_bert: False
+
+dataprocessor:
+  _target_: models.bertdot.BERTDotDataProcessor
+  bert_model: ${..bert_model}
+  char_limit: 10000

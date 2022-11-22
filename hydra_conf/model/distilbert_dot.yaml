@@ -1,0 +1,17 @@
+distilbert_model: distilbert-base-uncased
+
+checkpoint: null
+
+model:
+  _target_: models.distilbertdot.DistilBERTDotRanker
+  lr: 0.00003
+  warmup_steps: 1000
+  hparams:
+    bert_model: ${...distilbert_model}
+    dropout: 0.1
+    freeze_bert: False
+
+dataprocessor:
+  _target_: models.distilbertdot.DistilBERTDotDataProcessor
+  bert_model: ${..distilbert_model}
+  char_limit: 10000
