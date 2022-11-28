@@ -8,7 +8,7 @@ from pytorch_lightning import LightningModule, Trainer, seed_everything
 from ranking_utils.model.data.h5 import H5DataModule
 import common
 
-@hydra.main(config_path="hydra_conf", config_name="eval", version_base=None)
+@hydra.main(config_path="hydra_conf", config_name="test", version_base=None)
 def main(config: DictConfig):
 	distil = config.get("teacher") is not None
 	if distil:

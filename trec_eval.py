@@ -4,95 +4,65 @@ import hydra
 from hydra.utils import instantiate as hydra_inst
 from omegaconf import DictConfig
 
-import torch
-from pytorch_lightning import seed_everything
-from ranking_utils.model.data import TrainingMode
-from ranking_utils.model import Ranker
-import common
-from common.qrels import QrelDataset, load_qrels
+from ranking_utils.model.data.h5 import DataProcessor, H5PredictionDataset
+from pytorch_lightning import Trainer, LightningModule, seed_everything
 
-import h5py
+from torch.utils.data import DataLoader
+from collections import defaultdict
+import common
+from common.trec_eval import trec_evaluation, load_qrels_from_file, load_run_from_file
 
 import pandas as pd
+
 from pathlib import Path
-from typing import Union
 from tqdm import tqdm
 
-import pytrec_eval
-
-def orig_qrel_to_qrel(data_file: Union[Path, str], qrels_file: Union[Path, str], out_file: str):
-	qrels_file = Path(qrels_file)
-	qrels = pd.read_csv(qrels_file, sep='\t', header=None)
-	
-	with h5py.File(data_file, "r") as fp:
-		origqid_to_qid = {int(qid): idx for idx,qid in tqdm(enumerate(fp["orig_q_ids"]))}
-		origdid_to_did = {int(did): idx for idx,did in tqdm(enumerate(fp["orig_doc_ids"]))}
-	
-	with open(out_file, "a") as out:
-		for _, row in tqdm(qrels.iterrows()):
-			qid = origqid_to_qid[int(row["queryid"])]
-			docid = origdid_to_did[int(row["docid"])]
-			label = int(row["relevancy"])
-			out.write(f"{qid}\t0\t{docid}\t{label}\n")
-
-def save_model_scores(model: Ranker, dataset: QrelDataset, out_path: Path, batch_size: int = 100):
-	model.eval()
-	dataset_size = len(dataset)
-	with torch.inference_mode():
-		with out_path.open('a') as out:
-			for idx in tqdm(range(0, dataset_size, batch_size)):
-				instances = [dataset[i] for i in range(idx, min(idx+batch_size, dataset_size))]
-
-				batch, qids, labels = dataset.collate_fn(instances)
-
-				batch = tuple([tensor.to(model.device) for tensor in batch])
-				qids.to(model.device)
-				labels.to(model.device)
-				
-				scores = model(batch).flatten().cpu().detach().numpy()
-
-				for i, (_, qid, _) in enumerate(instances):
-					docid = dataset.get_docid(idx+i)
-					out.write(f"{qid}\t0\t{docid}\t{scores[i]}\n")
+from ranking_utils import write_trec_eval_file
 
 @hydra.main(config_path="hydra_conf", config_name="trec_eval", version_base=None)
 def main(config: DictConfig):
+	config.model.model.hparams.bert_model = config.model.model.hparams.bert_model
+	config.model.dataprocessor.bert_model = config.model.dataprocessor.bert_model
+
 	seed_everything(config.seed)
 	common.set_cuda_devices_env(config.used_gpus)
-
 	out_path = Path(config.out_path)
-	data_dir = Path(config.data_path)#Path("/home/tim.hagen/datasets/TRECDL2019Passage/")
-	data_file = data_dir / "data.h5"
-	orig_qrels_file = data_dir / "qrels.tsv"
-	qrels_file = data_dir / "qrels.mod.tsv"
-
-	if not qrels_file.exists():
-		print("Translating the qrels file to the doc- and query-ids used by the h5 converter")
-		orig_qrel_to_qrel(data_file, orig_qrels_file, qrels_file)
 
 	if not out_path.exists():
-		print(f"Evaluating model and storing the results at {out_path}")
-		model = common.load_model(config.model)
-		assert isinstance(model, Ranker)
-		model.training_mode = TrainingMode.POINTWISE
-		model.to("cuda:0")
-		dataprocessor = hydra_inst(config.model.dataprocessor)
-		dataset = QrelDataset(data_file, qrels_file, dataprocessor)
-		save_model_scores(model, dataset, out_path, batch_size=config.batch_size)
-		dataset.close()
-	else:
-		print(f"Found results from a previous run at {out_path}")
+		print("Evaluating model")
 
-	print("Loading the qrels...")
-	qrels = load_qrels(qrels_file)
-	print("Loading the model's scores...")
-	run = load_qrels(out_path, float)
-	print("Evaluating...")
-	# relevance_level=2 since https://trec.nist.gov/data/deep2019.html
-	evaluator: dict[str, dict[str, float]] = pytrec_eval.RelevanceEvaluator(qrels, {"map", "ndcg", "recip_rank"}, relevance_level=2)
-	eval = evaluator.evaluate(run)
-	df = pd.DataFrame([*eval.values()])
-	print(df.mean())
+		data_dir = Path(config.data_path)
+		data_file = data_dir / "data.h5"
+		test_file = data_dir / "fold_0" / "test.h5"
+
+		dataprocessor = hydra_inst(config.model.dataprocessor)
+		model = common.load_model(config.model)
+		trainer = hydra_inst(config.trainer)
+
+		assert isinstance(model, LightningModule)
+		assert isinstance(dataprocessor, DataProcessor)
+		assert isinstance(trainer, Trainer)
+		assert trainer.devices == 1
+
+		dataset = H5PredictionDataset(dataprocessor, data_file=data_file, pred_file_h5=test_file)
+		dataloader = DataLoader(dataset, batch_size=128, shuffle=False, num_workers=16, collate_fn=dataset.collate_fn)
+
+		ids_iter = iter(dataset.ids())
+		result = defaultdict(dict)
+		
+		predictions = trainer.predict(model=model, dataloaders=dataloader, return_predictions=True)
+		for item in tqdm(predictions):
+			for score in item["scores"].detach().numpy():
+				_, q_id, doc_id = next(ids_iter)
+				result[q_id][doc_id] = score
+
+		write_trec_eval_file(out_path, result, "test")
+	else:
+		print(f"Loading past evaluation run from file {out_path}")
+		result = load_run_from_file(out_path)
+
+	qrels = load_qrels_from_file(config.qrels_path)
+	print(trec_evaluation(qrels, result, ["recip_rank", "map", "ndcg_cut.10"]))
 
 if __name__ == '__main__':
 	main()
