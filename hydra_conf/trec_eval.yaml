@@ -5,10 +5,12 @@ defaults:
 
 seed: 12345
 used_gpus: null
-batch_size: 10
-out_path: ???
+batch_size: 100
 data_path: ???
 qrels_path: ???
+run_name: ???
+checkpoint_path: "checkpoints/${run_name}"
+out_path: "trec_evals/${run_name}_${model.checkpoint}.tsv"
 
 trainer:
   _target_: pytorch_lightning.Trainer

@@ -1,0 +1,20 @@
+distilbert_model: distilbert-base-uncased
+
+checkpoint: null
+
+model:
+  _target_: models.bert_dual_v2.BERTDualv2Ranker
+  lr: 0.00003
+  warmup_steps: 1000
+  hparams:
+    bert_q_model: distilbert-base-uncased #${...distilbert_model}
+    bert_doc_model: distilbert-base-uncased #${...distilbert_model}
+    dropout: 0.1
+    freeze_bert_q: False
+    freeze_bert_doc: False
+
+dataprocessor:
+  _target_: models.bert_dual_v2.BERTDualv2DataProcessor
+  bert_doc_model: distilbert-base-uncased #${..distilbert_model}
+  bert_q_model: distilbert-base-uncased #${..distilbert_model}
+  char_limit: 10000
