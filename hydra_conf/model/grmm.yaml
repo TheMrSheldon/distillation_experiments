@@ -1,0 +1,8 @@
+checkpoint: null
+
+model:
+  _target_: models.grmm.GRMMRanker
+  lr: 0.001
+
+dataprocessor:
+  _target_: models.grmm.GRMMDataProcessor

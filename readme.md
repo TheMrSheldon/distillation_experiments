@@ -226,3 +226,46 @@ Let X be an available GPU.
 		trainer.limit_val_batches=0 \
 		trainer.max_epochs=20
 	```
+
+
+# GRMM `grmm`
+ 1. Training
+	```
+	./train.py \
+		run_name=grmm \
+		model=grmm \
+		used_gpus=[] \
+		trainer.devices=1 \
+		trainer.accelerator=cpu \
+		datamodule.data_dir="/home/tim.hagen/datasets/TRECDL2019Passage/" \
+		datamodule.fold_name="fold_0" \
+		datamodule.batch_size=10 \
+		trainer.limit_val_batches=0 \
+		trainer.max_epochs=20
+	```
+ 1. Eval
+ 	```
+	./trec_eval.py \
+		run_name=grmm \
+		model=grmm \
+		model.checkpoint="epochepoch=00.ckpt" \
+		used_gpus=[] \
+		trainer.devices=1 \
+		trainer.accelerator=cpu \
+		out_path="./trec_evals/grmm_epoch00.tsv" \
+		data_path="/home/tim.hagen/datasets/TRECDL2019Passage/" \
+		qrels_path="/home/aanand/trec_evaluation/qrels/2019qrels-pass.txt" \
+		batch_size=50
+	```
+	Results:
+	```
+	{'map': 0.18441328537471377, 'recip_rank': 0.268255574900559, 'ndcg_cut_10': 0.16102790373869252}
+	{'map': 0.15399855609133747, 'recip_rank': 0.26755589313683903, 'ndcg_cut_10': 0.1489037966116541}
+	{'map': 0.17382576679955608, 'recip_rank': 0.3309574973472273, 'ndcg_cut_10': 0.19515298732927097}
+	```
+
+	Epoch | MAP | MRR | NDCG@10
+	------|-----|-----|--------
+	0     | 0.184 | 0.268 | 0.161
+	1     | 0.154 | 0.268 | 0.149
+	2     | 0.174 | 0.331 | 0.195
