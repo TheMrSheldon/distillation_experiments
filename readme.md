@@ -248,13 +248,13 @@ Let X be an available GPU.
 	./trec_eval.py \
 		run_name=grmm \
 		model=grmm \
-		model.checkpoint="epochepoch=00.ckpt" \
+		model.checkpoint="epochepoch\=00.ckpt" \
 		used_gpus=[] \
 		trainer.devices=1 \
 		trainer.accelerator=cpu \
 		out_path="./trec_evals/grmm_epoch00.tsv" \
 		data_path="/home/tim.hagen/datasets/TRECDL2019Passage/" \
-		qrels_path="/home/aanand/trec_evaluation/qrels/2019qrels-pass.txt" \
+		qrels_path="/home/tim.hagen/datasets/qrels/2019qrels-pass.txt" \
 		batch_size=50
 	```
 	Results:
@@ -269,3 +269,56 @@ Let X be an available GPU.
 	0     | 0.184 | 0.268 | 0.161
 	1     | 0.154 | 0.268 | 0.149
 	2     | 0.174 | 0.331 | 0.195
+
+# GRMM `grmm_v2`
+ 1. Training
+	```
+	./train.py \
+		run_name=grmm_v2 \
+		model=grmm \
+		used_gpus=[] \
+		trainer.devices=1 \
+		trainer.accelerator=cpu \
+		datamodule.data_dir="/home/tim.hagen/datasets/TRECDL2019Passage/" \
+		datamodule.fold_name="fold_0" \
+		datamodule.batch_size=10 \
+		trainer.limit_val_batches=0 \
+		trainer.max_epochs=20
+	```
+ 1. Evaluation
+	```
+	./trec_eval.py \
+		run_name=grmm_v2 \
+		model=grmm \
+		model.checkpoint="epochepoch\=00.ckpt" \
+		used_gpus=[] \
+		trainer.devices=1 \
+		trainer.accelerator=cpu \
+		out_path="./trec_evals/grmm_v2_epoch00.tsv" \
+		data_path="/home/tim.hagen/datasets/TRECDL2019Passage/" \
+		qrels_path="/home/tim.hagen/datasets/qrels/2019qrels-pass.txt" \
+		batch_size=50
+	```
+	Results:
+	Epoch | MAP | MRR | NDCG@10
+	------|-----|-----|--------
+	0     | 0.204 | 0.469 | 0.265
+	1     | 0.223 | 0.551 | 0.289
+	2     | 0.234 | 0.586 | 0.318
+	3     |
+	4     |
+	5     |
+	6     |
+	7     |
+	8     |
+	9     |
+	10    | 0.241 | 0.545 | 0.318
+	11    | 0.235 | 0.568 | 0.304
+	12    |
+	13    |
+	14    |
+	15    |
+	16    |
+	17    | 0.236 | 0.500 | 0.316
+	18    | 0.230 | 0.536 | 0.280
+	19    | 0.248 | 0.560 | 0.321

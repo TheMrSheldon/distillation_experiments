@@ -58,7 +58,7 @@ class GraphOfWordAdj:
 		return (x, adj)
 
 class GRMMDataProcessor(DataProcessor):
-	def __init__(self, qrl_len: int = 4, doc_len: int = 300) -> None:
+	def __init__(self, qrl_len: int = 20, doc_len: int = 300) -> None:
 		super().__init__()
 		self.qrl_len = qrl_len
 		self.doc_len = doc_len
@@ -89,7 +89,7 @@ class GRMMDataProcessor(DataProcessor):
 
 
 class GRMMRanker(Ranker):
-	def __init__(self, lr: float, layers: int = 2, topk: int = 40, qrl_len: int = 4, dropout: float = 0, idf: bool = False) -> None:
+	def __init__(self, lr: float, layers: int = 2, topk: int = 40, qrl_len: int = 20, dropout: float = 0, idf: bool = False) -> None:
 		super().__init__()
 		self.lr = lr
 		self.layers = layers
